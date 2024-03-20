@@ -156,10 +156,10 @@ def main(trader):
 
 
 if __name__ == '__main__':
-    with shift.Trader(" arbhounders_test001") as trader:
+    with shift.Trader("arbhounders_test001") as trader:
         trader.connect("initiator.cfg", "1ASCI6Fp")
         sleep(1)
         trader.sub_all_order_book()
         sleep(1)
-
+        
         main(trader)

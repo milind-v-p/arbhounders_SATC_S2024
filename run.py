@@ -121,7 +121,7 @@ def main(trader):
     threads = []
 
     # in this example, we simultaneously and independantly run our trading alogirthm on two tickers
-    tickers = ["AAPL", "MSFT"]
+    tickers = ["AAPL", "MSFT", "MMM"]
 
     print("START")
 

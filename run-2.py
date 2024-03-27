@@ -18,7 +18,8 @@ global_market_strategy_delay = 50
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
 global_arbitrage_value = 0.05
-global_code_working_time = 40
+global_code_working_time = 60
+global_market_sell = False
 
 #########################################################################
 
@@ -44,12 +45,45 @@ def close_positions(trader, ticker):
     print(f"running close positions function for {ticker}")
 
     item = trader.get_portfolio_item(ticker)
+    global_market_sell = True
+    # close any long positions
+    long_shares = item.get_long_shares()
+    if long_shares > 0:
+        print(f"limit selling because {ticker} long shares = {long_shares/100}")
+        order = shift.Order(shift.Order.Type.LIMIT_SELL,
+                            ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
+        trader.submit_order(order)
+        print("NO PROFIT")
+        sleep(1)  # we sleep to give time for the order to process
 
+    # close any short positions
+    short_shares = item.get_short_shares()
+    if short_shares > 0:
+        print(f"limit buying because {ticker} short shares = {short_shares/100}")
+        order = shift.Order(shift.Order.Type.LIMIT_BUY,
+                            ticker, int(short_shares/100))
+        trader.submit_order(order)
+        print("NO PROFIT")
+        sleep(1)
+
+        
+
+def final_close_positions(trader, ticker):
+    # NOTE: The following orders may not go through if:
+    # 1. You do not have enough buying power to close your short postions. Your strategy should be formulated to ensure this does not happen.
+    # 2. There is not enough liquidity in the market to close your entire position at once. You can avoid this either by formulating your
+    #    strategy to maintain a small position, or by modifying this function to close ur positions in batches of smaller orders.
+
+    # close all positions for given ticker
+    print(f"running final close positions function for {ticker}")
+
+    item = trader.get_portfolio_item(ticker)
+    
     # close any long positions
     long_shares = item.get_long_shares()
     if long_shares > 0:
         print(f"market selling because {ticker} long shares = {long_shares/100}")
-        order = shift.Order(shift.Order.Type.LIMIT_SELL,
+        order = shift.Order(shift.Order.Type.MARKET_SELL,
                             ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
         trader.submit_order(order)
         sleep(1)  # we sleep to give time for the order to process
@@ -58,11 +92,12 @@ def close_positions(trader, ticker):
     short_shares = item.get_short_shares()
     if short_shares > 0:
         print(f"market buying because {ticker} short shares = {short_shares/100}")
-        order = shift.Order(shift.Order.Type.LIMIT_BUY,
+        order = shift.Order(shift.Order.Type.MARKET_BUY,
                             ticker, int(short_shares/100))
         trader.submit_order(order)
         sleep(1)
 
+    print("all positions closed")    
 
 #def calculate_profit(trader, ticker, buy_order, sell_order):
     # Get executed prices for buy and sell orders
@@ -116,12 +151,17 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime, consecutive
         # Sell at determined price
         sell_order = shift.Order(sell_order_type, ticker, order_size, price=sell_price)
         trader.submit_order(sell_order)
+        global_market_sell = False
         sleep(45)
         close_positions(trader,ticker)
+        #if ticker.get_realized_pl() == 0:
+            #print("The strategy didnt give profit")
         #print(f"Placed sell order for {order_size} shares of {ticker} at price {sell_price}")
 
+
+
         # Update consecutive profit/loss for size adjustment
-        if sell_price >= best_ask:
+        if global_market_sell == False:
             consecutive_profit += 1
             consecutive_loss = 0
         else:
@@ -259,6 +299,7 @@ def strategy(trader: shift.Trader, ticker: str, endtime):
     close_positions(trader, ticker)
 
 
+
 def main(trader):
    
     # Initialize consecutive losses and strategy type dictionaries
@@ -305,11 +346,13 @@ def main(trader):
     # Cancel unfilled orders and close positions for each ticker
     for ticker in tickers:
         cancel_orders(trader, ticker)
-        close_positions(trader, ticker)
+        final_close_positions(trader, ticker)
 
     print("END")
     print(f"Final BP: {trader.get_portfolio_summary().get_total_bp()}")
     print(f"Final Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}")
+    sleep(1)
+
 
 
 if __name__ == '__main__':
@@ -320,4 +363,5 @@ if __name__ == '__main__':
         sleep(1)
         
         main(trader)
+
 

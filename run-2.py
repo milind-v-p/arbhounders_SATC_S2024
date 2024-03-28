@@ -11,21 +11,28 @@ from threading import Thread
 #Important Global Variables
 
 tickers = ['AAPL', 'CVX', 'DIS', 'GS', 'HD', 'IBM', 'JNJ', 'JPM', 'KO', 'MSFT', 'PG', 'VZ', 'WMT', 'XOM']
-init_lot_size = 5
-consecutive_loss_global = 2
+init_lot_size = 3
+consecutive_loss_global = 5
 consecutive_profit_global = 10
-global_market_strategy_delay = 50
+global_market_strategy_delay = 70
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
 global_arbitrage_value = 0.05
-global_code_working_time = 60
+global_code_working_time = 120
 global_market_sell = False
+global_time_between_iterations = 100
+global_wait_for_order_filling = 60
+global_wait_time_after_loss = 120
+i=0
+
+# Initialize dictionaries to track consecutive losses and profit for each ticker
+consecutive_losses = {ticker: 0 for ticker in tickers}
+consecutive_profits = {ticker: 0 for ticker in tickers}
+order_sizes = {ticker: init_lot_size for ticker in tickers}
+strategy_type = {ticker: 'long' for ticker in tickers}  # Initialize strategy type for each ticker
 
 #########################################################################
 
-# Global variables to track consecutive losses
-consecutive_losses = {ticker: 0 for ticker in tickers}
-strategy_type = {ticker: 'long' for ticker in tickers}  # Initialize strategy type for each ticker
 
 def cancel_orders(trader, ticker):
     # cancel all the remaining orders
@@ -45,26 +52,46 @@ def close_positions(trader, ticker):
     print(f"running close positions function for {ticker}")
 
     item = trader.get_portfolio_item(ticker)
-    global_market_sell = True
+    
     # close any long positions
     long_shares = item.get_long_shares()
     if long_shares > 0:
-        print(f"limit selling because {ticker} long shares = {long_shares/100}")
-        order = shift.Order(shift.Order.Type.LIMIT_SELL,
-                            ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
-        trader.submit_order(order)
-        print("NO PROFIT")
-        sleep(1)  # we sleep to give time for the order to process
+        if long_shares < (global_max_order_size*100):
+            print(f"limit selling at market because {ticker} long shares = {long_shares/100}")
+            order = shift.Order(shift.Order.Type.LIMIT_SELL,
+                                ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
+            trader.submit_order(order)
+            print("NO PROFIT")
+            global_market_sell = True
+            sleep(global_wait_for_order_filling)  # we sleep to give time for the order to process
+        else:
+            print(f"MARKET selling because {ticker} long shares = {long_shares} because of overflow:")
+            for _ in range(global_max_order_size):
+                order = shift.Order(shift.Order.Type.MARKET_SELL,ticker, int(long_shares/1))  # we divide by 100 because orders are placed for lots of 100 shares
+                trader.submit_order(order)
+                print("LOSS")
+            global_market_sell = True
+            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
 
     # close any short positions
     short_shares = item.get_short_shares()
     if short_shares > 0:
-        print(f"limit buying because {ticker} short shares = {short_shares/100}")
-        order = shift.Order(shift.Order.Type.LIMIT_BUY,
-                            ticker, int(short_shares/100))
-        trader.submit_order(order)
-        print("NO PROFIT")
-        sleep(1)
+        if short_shares < (global_max_order_size*100):
+            print(f"limit buying at market because {ticker} short shares = {short_shares/100}")
+            for _ in range(global_max_order_size):
+                order = shift.Order(shift.Order.Type.LIMIT_BUY,
+                                    ticker, int(short_shares/1))
+                trader.submit_order(order)
+            print("NO PROFIT")
+            global_market_sell = True
+            sleep(global_wait_for_order_filling)
+        else:
+            print(f"MARKET buying because {ticker} long shares = {long_shares} because of overflow:")
+            order = shift.Order(shift.Order.Type.MARKET_BUY,ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
+            trader.submit_order(order)
+            print("LOSS")
+            global_market_sell = True
+            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
 
         
 
@@ -109,10 +136,9 @@ def final_close_positions(trader, ticker):
 #    return profit
 
 
-def dynamic_market_making_strategy_buy_side(trader, ticker, endtime, consecutive_losses, strategy_type):
-    # Get initial state
-    initial_bp = trader.get_portfolio_summary().get_total_bp()
-    print(f"Initial buying power for {ticker}: {initial_bp}")
+def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
+   # Get initial state
+    
 
     # Define strategy parameters
     initial_order_size = init_lot_size  # Initial order size
@@ -127,6 +153,8 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime, consecutive
 
     while trader.get_last_trade_time() < endtime:
         # Get current best ask and best bid
+        initial_bp = trader.get_portfolio_summary().get_total_bp()
+        print(f"Initial buying power for {ticker}: {initial_bp}")
         best_price = trader.get_best_price(ticker)
         best_ask = best_price.get_ask_price()
         
@@ -152,21 +180,22 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime, consecutive
         sell_order = shift.Order(sell_order_type, ticker, order_size, price=sell_price)
         trader.submit_order(sell_order)
         global_market_sell = False
-        sleep(45)
+        print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
+        sleep(global_wait_for_order_filling)
         close_positions(trader,ticker)
         #if ticker.get_realized_pl() == 0:
             #print("The strategy didnt give profit")
         #print(f"Placed sell order for {order_size} shares of {ticker} at price {sell_price}")
 
-
-
         # Update consecutive profit/loss for size adjustment
         if global_market_sell == False:
             consecutive_profit += 1
             consecutive_loss = 0
+            print(consecutive_loss,"<-CONS. LOSS",consecutive_profit,"<-CONS. PROFIT")
         else:
             consecutive_profit = 0
             consecutive_loss += 1
+            print(consecutive_loss,"<-CONS. LOSS",consecutive_profit,"<-CONS. PROFIT")
 
         # Adjust order size based on performance
         if consecutive_profit >= consecutive_profit_global:  # Increase order size after 3 consecutive profits
@@ -182,9 +211,11 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime, consecutive
         #print(f"Profit from trade: {profit}")    
 
         # Sleep for a short time before the next iteration
-        sleep(100)
+        
+     
 
     print(f"Market making strategy for {ticker} finished.")
+
 
 def market_making_strategy(trader, ticker, endtime, consecutive_losses, strategy_type):
     # Get initial state
@@ -323,17 +354,27 @@ def main(trader):
     threads = []
     for ticker in tickers:
         
-        #threads.append(Thread(target=close_positions, args=(trader, ticker)))
-        threads.append(Thread(target=dynamic_market_making_strategy_buy_side, args=(trader, ticker, end_time, consecutive_losses, strategy_type)))
+        #threads.append(Thread(target=final_close_positions, args=(trader, ticker)))
+        threads.append(Thread(target=dynamic_market_making_strategy_buy_side, args=(trader, ticker, end_time)))
         # Market making strategy
 
         #threads.append(Thread(target=market_making_strategy, args=(trader, ticker, end_time, consecutive_losses, strategy_type)))
         # static market making strategy
 
+    i=1
+    j=1
     # Start all threads
     for thread in threads:
         thread.start()
         sleep(1)
+        if j%14 == 0:
+            print(f"The Current iteration is: {i}")
+            print("")
+            print("")
+            i=i+1
+            print(f"Waiting till {global_time_between_iterations} seconds before putting in next iteration.")
+            sleep(global_time_between_iterations)
+        j = j+1    
 
     # Wait until end time is reached
     while trader.get_last_trade_time() < end_time:
@@ -356,7 +397,7 @@ def main(trader):
 
 
 if __name__ == '__main__':
-    with shift.Trader("arbhounders_test002") as trader:        
+    with shift.Trader("arbhounders_test000") as trader:        
         trader.connect("initiator.cfg", "1ASCI6Fp")
         sleep(1)
         trader.sub_all_order_book()

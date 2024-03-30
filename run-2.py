@@ -10,15 +10,15 @@ from threading import Thread
 
 #Important Global Variables
 
-tickers = ['AAPL', 'CVX', 'DIS', 'GS', 'HD', 'IBM', 'JNJ', 'JPM', 'KO', 'MSFT', 'PG', 'VZ', 'WMT', 'XOM']
-init_lot_size = 3
+tickers = ['AAPL', 'CVX', 'DIS', 'GS', 'HD', 'IBM', 'JNJ', 'JPM', 'KO', 'MSFT', 'PG', 'VZ', 'WMT', 'XOM', ]
+init_lot_size = 5
 consecutive_loss_global = 5
 consecutive_profit_global = 10
-global_market_strategy_delay = 70
+global_market_strategy_delay = 45
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
-global_arbitrage_value = 0.05
-global_code_working_time = 120
+global_arbitrage_value = 0.025
+global_code_working_time = 5
 global_market_sell = False
 global_time_between_iterations = 100
 global_wait_for_order_filling = 60
@@ -148,10 +148,11 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
     delay = global_market_strategy_delay  # Delay in seconds before selling
     consecutive_profit = 0  # Track consecutive profit for size adjustment
     consecutive_loss = 0  # Track consecutive loss for size adjustment
-
+    initial_pl = trader.get_portfolio_summary().get_total_realized_pl()
     order_size = initial_order_size  # Initialize order size
 
     while trader.get_last_trade_time() < endtime:
+
         # Get current best ask and best bid
         initial_bp = trader.get_portfolio_summary().get_total_bp()
         print(f"Initial buying power for {ticker}: {initial_bp}")
@@ -212,7 +213,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
 
         # Sleep for a short time before the next iteration
         
-     
+    print(f"Current Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}") 
 
     print(f"Market making strategy for {ticker} finished.")
 

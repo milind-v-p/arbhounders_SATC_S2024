@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 import datetime as dt
 from threading import Thread
 
+
+#just for reference
+
+
 #import pandas as pd
 
 #########################################################################
@@ -18,7 +22,7 @@ global_market_strategy_delay = 45
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
 global_arbitrage_value = 0.025
-global_code_working_time = 5
+global_code_working_time = 240
 global_market_sell = False
 global_time_between_iterations = 100
 global_wait_for_order_filling = 60

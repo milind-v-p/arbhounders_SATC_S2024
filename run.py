@@ -23,7 +23,7 @@ global_market_sell = False
 global_time_between_iterations = 100
 global_wait_for_order_filling = 60
 global_wait_time_after_loss = 120
-i=0
+index_for_number_of_orders=0
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}
@@ -144,6 +144,8 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
         # Buy at best ask with a limit buy order
         buy_order = shift.Order(shift.Order.Type.LIMIT_BUY, ticker, order_size, price=best_ask)
         trader.submit_order(buy_order)
+        index_for_number_of_orders+=1
+        print(f"The number of order is {index_for_number_of_orders}")
         buy_price = best_ask
         print(f"Placed buy order for {order_size} lots of {ticker} at price {best_ask}")
 

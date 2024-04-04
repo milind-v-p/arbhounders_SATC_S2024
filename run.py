@@ -187,8 +187,32 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             order_size = max(order_size - order_size_increment, min_order_size)
             print(f"Decreasing order size to {order_size} shares")
             consecutive_loss = 0
+
+        best_price_2 = trader.get_best_price(ticker)
+        best_bid_2 = best_price.get_bid_price()
         
-    print(f"Current Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}") 
+        # Sell at best ask with a limit buy order
+        sell_order = shift.Order(shift.Order.Type.LIMIT_SELL, ticker, order_size, price=best_bid_2)
+        trader.submit_order(sell_order)
+        #index_for_number_of_orders +=1
+        #print(f"The number of order is {index_for_number_of_orders}")
+        sell_price_2 = best_bid_2
+        print(f"Placed sell order for {order_size} lots of {ticker} at price {best_bid_2}")
+        print(f"Waiting for {delay} seconds before selling...")
+        sleep(delay)
+
+        best_ask_2 = best_price.get_ask_price()
+
+        # Determine sell price (limit sell at bought price or market sell at best bid, whichever is higher)
+        buy_price_2 = max(best_ask_2, sell_price_2) + global_arbitrage_value
+        buy_order_type_2 = shift.Order.Type.LIMIT_BUY
+        buy_order_2 = shift.Order(buy_order_type_2, ticker, order_size, price=buy_price_2) # Sell at determined price
+        trader.submit_order(buy_order_2)
+        global_market_sell = False
+        print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
+        sleep(global_wait_for_order_filling)
+        close_positions(trader,ticker)
+    #print(f"Current Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}") 
 
     print(f"Market making strategy for {ticker} finished.")
 
@@ -242,6 +266,8 @@ def main(trader):
         cancel_orders(trader, ticker)
         final_close_positions(trader, ticker)
         sleep(10)
+        final_close_positions(trader,ticker)
+        sleep(100)
 
     print("END")
     print(f"Final BP: {trader.get_portfolio_summary().get_total_bp()}")

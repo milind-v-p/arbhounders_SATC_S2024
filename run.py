@@ -11,14 +11,14 @@ from threading import Thread
 #Important Global Variables
 
 tickers = ['AAPL', 'CVX', 'DIS', 'GS', 'HD', 'IBM', 'JNJ', 'JPM', 'KO', 'MSFT', 'PG', 'VZ', 'WMT', 'XOM', ]
-init_lot_size = 5
+init_lot_size = 2
 consecutive_loss_global = 5
 consecutive_profit_global = 10
 global_market_strategy_delay = 45
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
 global_arbitrage_value = 0.01
-global_code_working_time = 300
+global_code_working_time = 240
 global_market_sell = False
 global_time_between_iterations = 100
 global_wait_for_order_filling = 60

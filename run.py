@@ -24,6 +24,7 @@ global_time_between_iterations = 100
 global_wait_for_order_filling = 60
 global_wait_time_after_loss = 120
 index_for_number_of_orders=0
+global_time_between_strategies = 50
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}
@@ -188,6 +189,9 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             print(f"Decreasing order size to {order_size} shares")
             consecutive_loss = 0
 
+        close_positions(trader,ticker)
+        sleep(global_time_between_strategies)
+        
         best_price_2 = trader.get_best_price(ticker)
         best_bid_2 = best_price.get_bid_price()
         
@@ -277,7 +281,7 @@ def main(trader):
 
 
 if __name__ == '__main__':
-    with shift.Trader("arbhounders") as trader:        
+    with shift.Trader("arbhounders_test001") as trader:        
         trader.connect("initiator.cfg", "1ASCI6Fp")
         sleep(1)
         trader.sub_all_order_book()

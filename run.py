@@ -271,7 +271,7 @@ def main(trader):
         final_close_positions(trader, ticker)
         sleep(10)
         final_close_positions(trader,ticker)
-        sleep(100)
+        sleep(10)
 
     print("END")
     print(f"Final BP: {trader.get_portfolio_summary().get_total_bp()}")

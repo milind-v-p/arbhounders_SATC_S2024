@@ -106,7 +106,7 @@ def final_close_positions(trader, ticker):
         order = shift.Order(shift.Order.Type.MARKET_SELL,
                             ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
         trader.submit_order(order)
-        sleep(10)  # we sleep to give time for the order to process
+        sleep(1)  # we sleep to give time for the order to process
 
     # close any short positions
     short_shares = item.get_short_shares()
@@ -115,7 +115,7 @@ def final_close_positions(trader, ticker):
         order = shift.Order(shift.Order.Type.MARKET_BUY,
                             ticker, int(short_shares/100))
         trader.submit_order(order)
-        sleep(10)
+        sleep(1)
 
     print("all positions closed")    
 

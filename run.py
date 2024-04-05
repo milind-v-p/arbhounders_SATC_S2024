@@ -21,10 +21,10 @@ global_arbitrage_value = 0.01
 global_code_working_time = 240
 global_market_sell = False
 global_time_between_iterations = 100
-global_wait_for_order_filling = 60
+global_wait_for_order_filling = 150
 global_wait_time_after_loss = 120
 index_for_number_of_orders=0
-global_time_between_strategies = 50
+global_time_between_strategies = 30
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}

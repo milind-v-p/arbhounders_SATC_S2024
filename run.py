@@ -142,7 +142,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
         
         current_profit = trader.get_portfolio_summary().get_total_realized_pl() - initial_pl
         
-        if (current_profit >0 and current_profit < target_profit):    
+        if (current_profit < target_profit):    
             best_price = trader.get_best_price(ticker)
             best_ask = best_price.get_ask_price()
             # Buy at best ask with a limit buy order
@@ -164,12 +164,8 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
             sleep(global_wait_for_order_filling)
             close_positions(trader,ticker)
-            #sleep(global_time_between_strategies)
-        
-        elif(current_profit>target_profit):
-            sleep(1000)
-
-        else:
+            sleep(global_time_between_strategies)
+            
             best_price_2 = trader.get_best_price(ticker)
             best_bid_2 = best_price_2.get_bid_price()
             
@@ -194,6 +190,11 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
             sleep(global_wait_for_order_filling)
             close_positions(trader,ticker)
+        
+        else:
+            sleep(1000)
+
+            
 
 
         # Update consecutive profit/loss for size adjustment

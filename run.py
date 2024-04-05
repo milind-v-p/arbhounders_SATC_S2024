@@ -142,7 +142,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
         
         current_profit = trader.get_portfolio_summary().get_total_realized_pl() - initial_pl
         
-        if (current_profit >0 & current_profit < 1000):    
+        if (current_profit >0 & current_profit < target_profit):    
             best_price = trader.get_best_price(ticker)
             best_ask = best_price.get_ask_price()
             # Buy at best ask with a limit buy order

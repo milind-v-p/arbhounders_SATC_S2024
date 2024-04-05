@@ -25,7 +25,7 @@ global_wait_for_order_filling = 150
 global_wait_time_after_loss = 60
 index_for_number_of_orders=0
 global_time_between_strategies = 30
-target_profit = 500
+target_profit = 500.00
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}
@@ -142,7 +142,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
         
         current_profit = trader.get_portfolio_summary().get_total_realized_pl() - initial_pl
         
-        if (current_profit >0 & current_profit < target_profit):    
+        if (current_profit >0 and current_profit < target_profit):    
             best_price = trader.get_best_price(ticker)
             best_ask = best_price.get_ask_price()
             # Buy at best ask with a limit buy order

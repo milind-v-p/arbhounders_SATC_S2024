@@ -18,11 +18,11 @@ global_market_strategy_delay = 45
 global_max_order_size = 8
 global_rebate_for_market_strategy = 0.02
 global_arbitrage_value = 0.01
-global_code_working_time = 240
+global_code_working_time = 275
 global_market_sell = False
-global_time_between_iterations = 100
+global_time_between_iterations = 10
 global_wait_for_order_filling = 150
-global_wait_time_after_loss = 120
+global_wait_time_after_loss = 20
 index_for_number_of_orders=0
 global_time_between_strategies = 30
 

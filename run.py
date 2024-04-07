@@ -25,7 +25,7 @@ global_wait_for_order_filling = 150
 global_wait_time_after_loss = 60
 index_for_number_of_orders=0
 global_time_between_strategies = 30
-target_profit = 500.00
+target_profit = 50000.00
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}
@@ -216,6 +216,8 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             order_size = max(order_size - order_size_increment, min_order_size)
             print(f"Decreasing order size to {order_size} shares")
             consecutive_loss = 0
+
+        final_close_positions(trader,ticker)
 
     #print(f"Current Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}") 
 

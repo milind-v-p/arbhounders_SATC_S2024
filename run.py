@@ -17,7 +17,7 @@ consecutive_profit_global = 10
 global_market_strategy_delay = 60
 global_max_order_size = 6
 global_rebate_for_market_strategy = 0.02
-global_arbitrage_value = 0.01
+global_arbitrage_value = 0
 global_code_working_time = 275
 global_market_sell = False
 global_time_between_iterations = 10
@@ -42,52 +42,6 @@ def cancel_orders(trader, ticker):
         if (order.symbol == ticker):
             trader.submit_cancellation(order)
             sleep(1)  # the order cancellation needs a little time to go through
-
-
-def close_positions(trader, ticker):
-    print(f"running close positions function for {ticker}")
-    item = trader.get_portfolio_item(ticker)
-    # close any long positions
-    long_shares = item.get_long_shares()
-    if long_shares > 0:
-        if long_shares < (global_max_order_size*100):
-            print(f"limit selling at market because {ticker} long shares = {long_shares/100}")
-            order = shift.Order(shift.Order.Type.LIMIT_SELL,
-                                ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
-            trader.submit_order(order)
-            print("NO PROFIT")
-            global_market_sell = True
-            sleep(global_wait_for_order_filling)  # we sleep to give time for the order to process
-        else:
-            print(f"MARKET selling because {ticker} long shares = {long_shares} because of overflow:")
-            for _ in range(global_max_order_size):
-                order = shift.Order(shift.Order.Type.MARKET_SELL,ticker, int(long_shares/1))  # we divide by 100 because orders are placed for lots of 100 shares
-                trader.submit_order(order)
-                print("LOSS")
-            global_market_sell = True
-            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
-
-    # close any short positions
-    short_shares = item.get_short_shares()
-    if short_shares > 0:
-        if short_shares < (global_max_order_size*100):
-            print(f"limit buying at market because {ticker} short shares = {short_shares/100}")
-            for _ in range(global_max_order_size):
-                order = shift.Order(shift.Order.Type.LIMIT_BUY,
-                                    ticker, int(short_shares/1))
-                trader.submit_order(order)
-            print("NO PROFIT")
-            global_market_sell = True
-            sleep(global_wait_for_order_filling)
-        else:
-            print(f"MARKET buying because {ticker} long shares = {long_shares} because of overflow:")
-            order = shift.Order(shift.Order.Type.MARKET_BUY,ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
-            trader.submit_order(order)
-            print("LOSS")
-            global_market_sell = True
-            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
-
-        
 
 def final_close_positions(trader, ticker):
     # NOTE: The following orders may not go through if:
@@ -120,6 +74,46 @@ def final_close_positions(trader, ticker):
 
     print("all positions closed")    
 
+def close_positions(trader, ticker):
+    print(f"running close positions function for {ticker}")
+    item = trader.get_portfolio_item(ticker)
+    # close any long positions
+    long_shares = item.get_long_shares()
+    if long_shares > 0:
+        if long_shares < (global_max_order_size*100):
+            print(f"limit selling at market because {ticker} long shares = {long_shares/100}")
+            order = shift.Order(shift.Order.Type.LIMIT_SELL,
+                                ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
+            trader.submit_order(order)
+            print("NO PROFIT")
+            global_market_sell = True
+            sleep(global_wait_for_order_filling)  # we sleep to give time for the order to process
+        else:
+            print(f"MARKET selling because {ticker} long shares = {long_shares} because of overflow:")
+            final_close_positions(trader,ticker)
+            global_market_sell = True
+            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
+
+    # close any short positions
+    short_shares = item.get_short_shares()
+    if short_shares > 0:
+        if short_shares < (global_max_order_size*100):
+            print(f"limit buying at market because {ticker} short shares = {short_shares/100}")
+            for _ in range(global_max_order_size):
+                order = shift.Order(shift.Order.Type.LIMIT_BUY,
+                                    ticker, int(short_shares/1))
+                trader.submit_order(order)
+            print("NO PROFIT")
+            global_market_sell = True
+            sleep(global_wait_for_order_filling)
+        else:
+            print(f"MARKET buying because {ticker} long shares = {long_shares} because of overflow:")
+            order = shift.Order(shift.Order.Type.MARKET_BUY,ticker, int(long_shares/100))  # we divide by 100 because orders are placed for lots of 100 shares
+            trader.submit_order(order)
+            print("LOSS")
+            global_market_sell = True
+            sleep(global_wait_time_after_loss)  # we sleep to give time for the order to process
+
 
 def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
   
@@ -140,62 +134,58 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
         initial_bp = trader.get_portfolio_summary().get_total_bp()
         print(f"Initial buying power for {ticker}: {initial_bp}")
         
-        current_profit = trader.get_portfolio_summary().get_total_realized_pl() - initial_pl
+        #current_profit = trader.get_portfolio_summary().get_total_realized_pl() - initial_pl
         
-        if (current_profit < target_profit):    
-            best_price = trader.get_best_price(ticker)
-            best_ask = best_price.get_ask_price()
-            # Buy at best ask with a limit buy order
-            buy_order = shift.Order(shift.Order.Type.LIMIT_BUY, ticker, order_size, price=best_ask)
-            trader.submit_order(buy_order)
-            buy_price = best_ask
-            print(f"Placed buy order for {order_size} lots of {ticker} at price {best_ask}")
-            print(f"Waiting for {delay} seconds before selling...")
-            sleep(delay)
-
-            best_bid = best_price.get_bid_price()
-
-            # Determine sell price (limit sell at bought price or market sell at best bid, whichever is higher)
-            sell_price = max(best_bid, buy_price) + global_arbitrage_value
-            sell_order_type = shift.Order.Type.LIMIT_SELL
-            sell_order = shift.Order(sell_order_type, ticker, order_size, price=sell_price) # Sell at determined price
-            trader.submit_order(sell_order)
-            global_market_sell = False
-            print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
-            sleep(global_wait_for_order_filling)
-            close_positions(trader,ticker)
-            sleep(global_time_between_strategies)
-            
-            best_price_2 = trader.get_best_price(ticker)
-            best_bid_2 = best_price_2.get_bid_price()
-            
-            # Sell at best ask with a limit buy order
-            sell_order = shift.Order(shift.Order.Type.LIMIT_SELL, ticker, order_size, price=best_bid_2)
-            trader.submit_order(sell_order)
-            #index_for_number_of_orders +=1
-            #print(f"The number of order is {index_for_number_of_orders}")
-            sell_price_2 = best_bid_2
-            print(f"Placed sell order for {order_size} lots of {ticker} at price {best_bid_2}")
-            print(f"Waiting for {delay} seconds before selling...")
-            sleep(delay)
-
-            best_ask_2 = best_price_2.get_ask_price()
-
-            # Determine sell price (limit sell at bought price or market sell at best bid, whichever is higher)
-            buy_price_2 = max(best_ask_2, sell_price_2) + global_arbitrage_value
-            buy_order_type_2 = shift.Order.Type.LIMIT_BUY
-            buy_order_2 = shift.Order(buy_order_type_2, ticker, order_size, price=buy_price_2) # Sell at determined price
-            trader.submit_order(buy_order_2)
-            global_market_sell = False
-            print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
-            sleep(global_wait_for_order_filling)
-            close_positions(trader,ticker)
+        #if (current_profit < target_profit):    
+        best_price = trader.get_best_price(ticker)
+        best_bid = best_price.get_bid_price()
+        # Buy at best ask with a limit buy order
+        buy_order = shift.Order(shift.Order.Type.LIMIT_BUY, ticker, order_size, price=best_ask)
+        trader.submit_order(buy_order)
+        buy_price = best_bid
+        print(f"Placed buy order for {order_size} lots of {ticker} at price {best_ask}")
         
-        else:
-            sleep(1000)
+        best_ask = best_price.get_ask_price()
 
-            
+        # Determine sell price (limit sell at bought price or market sell at best bid, whichever is higher)
+        sell_price = max(best_bid, buy_price) + global_arbitrage_value
+        sell_order_type = shift.Order.Type.LIMIT_SELL
+        sell_order = shift.Order(sell_order_type, ticker, order_size, price=sell_price) # Sell at determined price
+        trader.submit_order(sell_order)
 
+        #print(f"Waiting for {delay} seconds before selling...")
+        global_market_sell = False
+        print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
+        
+        sleep(delay)
+        sleep(global_wait_for_order_filling)
+        close_positions(trader,ticker)
+        sleep(global_time_between_strategies)
+        
+        best_price_2 = trader.get_best_price(ticker)
+        best_bid_2 = best_price_2.get_bid_price()
+        
+        # Sell at best ask with a limit buy order
+        sell_order = shift.Order(shift.Order.Type.LIMIT_SELL, ticker, order_size, price=best_bid_2)
+        trader.submit_order(sell_order)
+        #index_for_number_of_orders +=1
+        #print(f"The number of order is {index_for_number_of_orders}")
+        sell_price_2 = best_bid_2
+        print(f"Placed sell order for {order_size} lots of {ticker} at price {best_bid_2}")
+        print(f"Waiting for {delay} seconds before selling...")
+        sleep(delay)
+
+        best_ask_2 = best_price_2.get_ask_price()
+
+        # Determine sell price (limit sell at bought price or market sell at best bid, whichever is higher)
+        buy_price_2 = max(best_ask_2, sell_price_2) + global_arbitrage_value
+        buy_order_type_2 = shift.Order.Type.LIMIT_BUY
+        buy_order_2 = shift.Order(buy_order_type_2, ticker, order_size, price=buy_price_2) # Sell at determined price
+        trader.submit_order(buy_order_2)
+        global_market_sell = False
+        print(f"Waiting for {global_wait_for_order_filling} seconds to try and fill the sell order")
+        sleep(global_wait_for_order_filling)
+        close_positions(trader,ticker)
 
         # Update consecutive profit/loss for size adjustment
         if global_market_sell == False:
@@ -217,7 +207,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             print(f"Decreasing order size to {order_size} shares")
             consecutive_loss = 0
 
-        final_close_positions(trader,ticker)
+    
 
     #print(f"Current Profits/Losses: {trader.get_portfolio_summary().get_total_realized_pl() - initial_pl}") 
 

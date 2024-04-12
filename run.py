@@ -25,7 +25,7 @@ global_wait_for_order_filling = 150
 global_wait_time_after_loss = 60
 index_for_number_of_orders=0
 global_time_between_strategies = 30
-target_profit = 500.00
+target_profit = 5000.00
 
 # Initialize dictionaries to track consecutive losses and profit for each ticker
 consecutive_losses = {ticker: 0 for ticker in tickers}

@@ -140,6 +140,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             #if (current_profit < target_profit):    
             best_price = trader.get_best_price(ticker)
             best_bid = best_price.get_bid_price()
+            best_ask = best_price.get_ask_price()
             # Buy at best ask with a limit buy order
             buy_order = shift.Order(shift.Order.Type.LIMIT_BUY, ticker, order_size, price=best_ask)
             trader.submit_order(buy_order)
@@ -165,6 +166,7 @@ def dynamic_market_making_strategy_buy_side(trader, ticker, endtime):
             
             best_price_2 = trader.get_best_price(ticker)
             best_bid_2 = best_price_2.get_bid_price()
+            best_ask_2 = best_price_2.get_ask_price()
             
             # Sell at best ask with a limit buy order
             sell_order = shift.Order(shift.Order.Type.LIMIT_SELL, ticker, order_size, price=best_bid_2)
